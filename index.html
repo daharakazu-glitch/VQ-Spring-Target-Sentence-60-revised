@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Speaking Trainer</title>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* カスタムフォントとアニメーションの定義 */
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&display=swap');
+        
+        .font-mincho {
+            font-family: "Noto Serif JP", "Yu Mincho", "MS Mincho", "Hiragino Mincho ProN", serif;
+        }
+        .font-times {
+            font-family: "Times New Roman", Times, serif;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        /* トグルボタンのスタイル */
+        .toggle-btn {
+            display: flex;
+            flex: 1;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            border-radius: 9999px;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .toggle-btn-active-white {
+            background-color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: #1f2937;
+        }
+        .toggle-btn-active-blue {
+            background-color: #2563eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: white;
+        }
+        .toggle-btn-active-green {
+            background-color: #16a34a;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            color: white;
+        }
+        .toggle-btn-inactive {
+            color: #6b7280;
+        }
+        .toggle-btn-inactive:hover {
+            color: #374151;
+            background-color: #e5e7eb;
+        }
+        /* 追加: 改行を防ぐためのクラス */
+        .prevent-orphan {
+            white-space: pre-wrap; 
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans">
+    <div id="app"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // アイコンコンポーネント (LucideアイコンをSVGとして直接定義)
+        const IconMic = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>);
+        const IconSquare = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect></svg>);
+        const IconVolume2 = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>);
+        const IconEye = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>);
+        const IconEyeOff = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg>);
+        const IconChevronLeft = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m15 18-6-6 6-6"></path></svg>);
+        const IconChevronRight = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m9 18 6-6-6-6"></path></svg>);
+        const IconCheckCircle = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>);
+        const IconFileText = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg>);
+        const IconArrowLeft = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>);
+        const IconBookOpen = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>);
+        const IconRefreshCw = ({className}) => (<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>);
+
+
+        // 60個の英語例文データ (カッコ内のスペースを全角で広く取っています)
+        const allSentences = [
+            { id: 1, category: "原級を使った構文", jp: "できるだけすぐに私に知らせてください。", en: "Please let me know as soon as possible.", enBlank: "Please let me know ( 　　　　　 ) ( 　　　　　 ) ( 　　　　　 )." },
+            { id: 2, category: "原級を使った構文", jp: "５千人もの人たちがそのキャンペーンに参加した。", en: "As many as five thousand people took part in the campaign.", enBlank: "( 　　　　　 ) ( 　　　　　 ) ( 　　　　　 ) five thousand people took part in the campaign." },
+            { id: 3, category: "比較級を使った構文", jp: "次の試験があるのでいっそう勉強する必要がある。", en: "I need to study all the harder for the next exam.", enBlank: "I need to study ( 　　　　　 ) the ( 　　　　　 ) ( 　　　　　 ) the next exam." },
+            { id: 4, category: "最上級を使った構文", jp: "私たちはこの機会を最大限に利用しなければならない。", en: "We must make the most of this chance.", enBlank: "We must ( 　　　　　 ) the ( 　　　　　 ) ( 　　　　　 ) this chance." },
+            { id: 5, category: "仮定法過去と仮定法過去完了", jp: "暇があれば、君と一緒に行けるのに。", en: "If I were free, I could go with you.", enBlank: "( 　　　　　 ) I ( 　　　　　 ) free, I ( 　　　　　 ) ( 　　　　　 ) with you." },
+            { id: 6, category: "仮定法過去と仮定法過去完了", jp: "暇があったなら、君と一緒に行けたのに。", en: "If I had been free, I could have gone with you.", enBlank: "( 　　　　　 ) I ( 　　　　　 ) ( 　　　　　 ) free, I ( 　　　　　 ) ( 　　　　　 ) ( 　　　　　 ) with you." },
+            { id: 7, category: "if節と主節で時制が異なる場合", jp: "そのチームに入っていたなら、今ごろ彼はスターになっているだろうに。", en: "If he had joined the team, he would be a star now.", enBlank: "( 　　　　　 ) he ( 　　　　　 ) ( 　　　　　 ) the team, he ( 　　　　　 ) ( 　　　　　 ) a star now." },
+            { id: 8, category: "未来のことを表す仮定法", jp: "仮にあなたが本を書くとしたら、何についての本ですか。", en: "If you were to write a book, what would it be about?", enBlank: "( 　　　　　 ) you ( 　　　　　 ) ( 　　　　　 ) ( 　　　　　 ) a book, what ( 　　　　　 ) it ( 　　　　　 ) about?" },
+            { id: 9, category: "wishを使った仮定法", jp: "もっと勉強していたらなあ。", en: "I wish I had studied more.", enBlank: "I ( 　　　　　 ) I ( 　　　　　 ) studied more." },
+            { id: 10, category: "as ifを使った仮定法", jp: "彼はまるで何でも知っているかのように話す。", en: "He speaks as if he knew everything.", enBlank: "He speaks ( 　　　　　 ) ( 　　　　　 ) he knew everything." },
+            { id: 11, category: "if it were not for ～ / if it had not been for ～", jp: "彼女の助けがなければ、私は失敗するだろう。", en: "If it were not for her help, I would fail.", enBlank: "( 　　　　　 ) ( 　　　　　 ) ( 　　　　　 ) ( 　　　　　 ) ( 　　　　　 ) her help, I would fail." },
+            { id: 12, category: "without / with を使った仮定法", jp: "音楽がなければ、私の人生は退屈だろう。", en: "Without music, my life would be boring.", enBlank: "( 　　　　　 ) music, my life would be boring." },
+            { id: 13, category: "疑問詞で始まる間接疑問文", jp: "その箱の中に何が入っているかわかりますか。", en: "Do you know what is in the box?", enBlank: "Do you know ( 　　　　　 ) ( 　　　　　 ) in the box?" },
+            { id: 14, category: "if / whetherで始まる間接疑問文", jp: "メアリーがどこに住んでいるか知っていますか。", en: "Do you know where Mary lives?", enBlank: "Do you know ( 　　　　　 ) Mary ( 　　　　　 )?" },
+            { id: 15, category: "主節の動詞が思考・認識を表す動詞の時", jp: "彼が真実を知っているかどうか疑問に思う。", en: "I wonder if he knows the truth.", enBlank: "I wonder ( 　　　　　 ) he knows the truth." },
+            { id: 16, category: "疑問詞＋to 不定詞", jp: "次に何をすべきか教えてください。", en: "Please tell me what to do next.", enBlank: "Please tell me ( 　　　　　 ) ( 　　　　　 ) ( 　　　　　 ) next." },
+            { id: 17, category: "付加疑問文", jp: "遅れないでね。", en: "Don't be late, will you?", enBlank: "Don't be late, ( 　　　　　 ) ( 　　　　　 )?" },
+            { id: 18, category: "付加疑問文", jp: "そのドアを開けてくれますか。", en: "Open the door, will you?", enBlank: "Open the door, ( 　　　　　 ) ( 　　　　　 )?" },
+            { id: 19, category: "付加疑問文", jp: "休憩しましょうか。", en: "Let's take a break, shall we?", enBlank: "Let's take a break, ( 　　　　　 ) ( 　　　　　 )?" },
+            { id: 20, category: "否定疑問文", jp: "「彼は親切じゃないの？」「いいえ、親切だよ。」", en: "“Isn’t he kind?” “Yes, he is.”", enBlank: "“Isn’t he kind?” “( 　　　　　 ), he ( 　　　　　 ).”" },
+            { id: 21, category: "否定疑問文に対する返答", jp: "「彼は親切じゃないの？」「はい、親切じゃないよ。」", en: "“Isn’t he kind?” “No, he isn’t.”", enBlank: "“Isn’t he kind?” “( 　　　　　 ), he ( 　　　　　 ).”" },
+            { id: 22, category: "修辞疑問文", jp: "誰が未来を予見できようか。（誰もできない）", en: "Who can foresee the future?", enBlank: "Who can foresee the future?" },
+            { id: 23, category: "否定", jp: "私は彼のことを全く知らない。", en: "I know nothing about him.", enBlank: "I know ( 　　　　　 ) about him." },
+            { id: 24, category: "否定", jp: "彼の話は決して本当ではない。", en: "His story is by no means true.", enBlank: "His story is ( 　　　　　 ) ( 　　　　　 ) means true." },
+            { id: 25, category: "否定", jp: "私は朝食をほとんど食べない。", en: "I hardly eat breakfast.", enBlank: "I ( 　　　　　 ) eat breakfast." },
+            { id: 26, category: "否定", jp: "私には友達がほとんどいない。", en: "I have few friends.", enBlank: "I have ( 　　　　　 ) friends." },
+            { id: 27, category: "否定", jp: "私はその映画の両方を見たわけではない。", en: "I didn't see both of the movies.", enBlank: "I didn't see ( 　　　　　 ) of the movies." },
+            { id: 28, category: "否定", jp: "私はその映画のどちらも見ていない。", en: "I saw neither of the movies.", enBlank: "I saw ( 　　　　　 ) of the movies." },
+            { id: 29, category: "強調構文", jp: "私が話したいのはあなたです。", en: "It is you that I want to talk to.", enBlank: "It is you ( 　　　　　 ) I want to talk to." },
+            { id: 30, category: "強調", jp: "一体全体なにを言っているのですか。", en: "What in the world are you talking about?", enBlank: "What in the ( 　　　　　 ) are you talking about?" },
+            { id: 31, category: "強調", jp: "私はそのことを全く知らない。", en: "I know nothing whatever about it.", enBlank: "I know nothing ( 　　　　　 ) about it." },
+            { id: 32, category: "倒置", jp: "私は彼に二度と会うことはないだろう。", en: "Never will I see him again.", enBlank: "( 　　　　　 ) ( 　　　　　 ) I see him again." },
+            { id: 33, category: "倒置", jp: "丘の上に古いお城が立っている。", en: "On the hill stands an old castle.", enBlank: "On the hill ( 　　　　　 ) an old castle." },
+            { id: 34, category: "名詞構文", jp: "彼は病気のために学校を休んだ。", en: "His illness prevented him from going to school.", enBlank: "His illness ( 　　　　　 ) him ( 　　　　　 ) going to school." },
+            { id: 35, category: "無生物主語", jp: "そのニュースを聞いて彼は喜んだ。", en: "The news made him glad.", enBlank: "The news ( 　　　　　 ) him glad." },
+            { id: 36, category: "無生物主語", jp: "彼女は一人で旅行するには幼すぎる。", en: "Her youth prevents her from traveling alone.", enBlank: "Her youth ( 　　　　　 ) her ( 　　　　　 ) traveling alone." },
+            { id: 37, category: "話法", jp: "私は彼女に二度と遅刻しないようにと言った。", en: "I told her not to be late again.", enBlank: "I told her ( 　　　　　 ) ( 　　　　　 ) be late again." },
+            { id: 38, category: "無生物主語", jp: "彼はとても忙しいので、私たちを手伝うことができない。", en: "His business prevents him from helping us.", enBlank: "His business ( 　　　　　 ) him ( 　　　　　 ) helping us." },
+            { id: 39, category: "不定詞", jp: "私は始発列車に乗るために早起きした。", en: "I got up early to catch the first train.", enBlank: "I got up early ( 　　　　　 ) catch the first train." },
+            { id: 40, category: "関係詞", jp: "これは私が昨日買った本です。", en: "This is the book which I bought yesterday.", enBlank: "This is the book ( 　　　　　 ) I bought yesterday." },
+            { id: 41, category: "関係詞", jp: "私には弁護士になった兄がいる。", en: "I have a brother who became a lawyer.", enBlank: "I have a brother ( 　　　　　 ) became a lawyer." },
+            { id: 42, category: "関係詞", jp: "これが私の探していたペンです。", en: "This is the pen I was looking for.", enBlank: "This is the pen I was looking ( 　　　　　 )." },
+            { id: 43, category: "代名詞", jp: "あなたがしなければならないのは、この手紙を書くことだけだ。", en: "All you have to do is write this letter.", enBlank: "( 　　　　　 ) you have to do is write this letter." },
+            { id: 44, category: "代名詞", jp: "私はもう彼に頼ることはできない。", en: "I can no longer depend on him.", enBlank: "I can ( 　　　　　 ) ( 　　　　　 ) depend on him." },
+            { id: 45, category: "助動詞", jp: "彼は昨日その手紙を書いたに違いない。", en: "He must have written the letter yesterday.", enBlank: "He ( 　　　　　 ) ( 　　　　　 ) written the letter yesterday." },
+            { id: 46, category: "助動詞", jp: "彼は昨日その手紙を書いたはずがない。", en: "He cannot have written the letter yesterday.", enBlank: "He ( 　　　　　 ) ( 　　　　　 ) written the letter yesterday." },
+            { id: 47, category: "助動詞", jp: "彼はもっと一生懸命勉強すべきだったのに。", en: "He should have studied harder.", enBlank: "He ( 　　　　　 ) ( 　　　　　 ) studied harder." },
+            { id: 48, category: "仮定法", jp: "彼は私がそこへ行くことを提案した。", en: "He suggested that I go there.", enBlank: "He suggested that I ( 　　　　　 ) there." },
+            { id: 49, category: "不定詞", jp: "私は彼が親切だとわかった。", en: "I found him to be kind.", enBlank: "I found him ( 　　　　　 ) ( 　　　　　 ) kind." },
+            { id: 50, category: "分詞", jp: "彼女はドアを開けたままにしておいた。", en: "She left the door open.", enBlank: "She ( 　　　　　 ) the door open." },
+            { id: 51, category: "使役動詞", jp: "私は彼に真実を話させた。", en: "I made him tell the truth.", enBlank: "I ( 　　　　　 ) him ( 　　　　　 ) the truth." },
+            { id: 52, category: "不定詞", jp: "彼はその知らせに喜んでいるようだった。", en: "He seemed to be pleased with the news.", enBlank: "He seemed ( 　　　　　 ) ( 　　　　　 ) pleased with the news." },
+            { id: 53, category: "知覚動詞", jp: "私は彼がそう言うのを聞いたことがない。", en: "I have never heard him say so.", enBlank: "I have never ( 　　　　　 ) him ( 　　　　　 ) so." },
+            { id: 54, category: "動詞の語法", jp: "彼は私の質問に答えなかった。", en: "He did not answer my question.", enBlank: "He did not answer ( 　　　　　 ) question." },
+            { id: 55, category: "動詞の語法", jp: "彼は私に英語を教えてくれる。", en: "He teaches me English.", enBlank: "He teaches ( 　　　　　 ) ( 　　　　　 ) me." },
+            { id: 56, category: "動詞の語法", jp: "彼は私がバッグを運ぶのを手伝ってくれた。", en: "He helped me carry my bag.", enBlank: "He helped me ( 　　　　　 ) my bag." },
+            { id: 57, category: "使役動詞", jp: "私は彼を私の部屋に入れた。", en: "I let him come into my room.", enBlank: "I ( 　　　　　 ) him ( 　　　　　 ) into my room." },
+            { id: 58, category: "動名詞", jp: "彼女は一人で住むことに慣れている。", en: "She is used to living alone.", enBlank: "She is used ( 　　　　　 ) ( 　　　　　 ) alone." },
+            { id: 59, category: "動名詞", jp: "彼は夕食を食べる前に手を洗った。", en: "He washed his hands before eating dinner.", enBlank: "He washed his hands ( 　　　　　 ) ( 　　　　　 ) dinner." },
+            { id: 60, category: "分詞構文", jp: "彼は駅に着くとすぐに電話をかけてきた。", en: "On arriving at the station, he called me up.", enBlank: "( 　　　　　 ) ( 　　　　　 ) at the station, he called me up." }
+        ];
+
+        function App() {
+            const [currentView, setCurrentView] = useState('list');
+            const [selectedIds, setSelectedIds] = useState(allSentences.map(s => s.id));
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [displayMode, setDisplayMode] = useState('blank');
+            
+            // 統合された録音＆AI認識ステート
+            const [isActive, setIsActive] = useState(false);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [audioUrl, setAudioUrl] = useState(null);
+            const [recognitionText, setRecognitionText] = useState("");
+            const [similarityScore, setSimilarityScore] = useState(null);
+            
+            const mediaRecorderRef = useRef(null);
+            const audioChunksRef = useRef([]);
+            const recognitionRef = useRef(null);
+
+            // --- 一覧画面の処理 ---
+            const handleSelectAll = () => setSelectedIds(allSentences.map(s => s.id));
+            const handleClearAll = () => setSelectedIds([]);
+            
+            const handleToggleSelect = (id, event) => {
+                if(event.target.tagName !== 'INPUT') return; 
+                
+                if (selectedIds.includes(id)) {
+                    setSelectedIds(selectedIds.filter(i => i !== id));
+                } else {
+                    setSelectedIds([...selectedIds, id]);
+                }
+            };
+
+            const startPractice = () => {
+                if (selectedIds.length === 0) return;
+                setCurrentIndex(0);
+                setDisplayMode('blank');
+                setCurrentView('practice');
+                resetPracticeStates();
+            };
+
+            // --- 学習画面の処理 ---
+            const activeSentences = allSentences.filter(s => selectedIds.includes(s.id));
+            const currentSentence = activeSentences[currentIndex];
+
+            const goBackToList = () => {
+                setCurrentView('list');
+                resetPracticeStates();
+            };
+
+            const resetPracticeStates = () => {
+                setAudioUrl(null);
+                setRecognitionText("");
+                setSimilarityScore(null);
+                setIsProcessing(false);
+                if (isActive) stopBoth();
+            };
+
+            const nextSentence = () => {
+                if (currentIndex < activeSentences.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
+                    resetPracticeStates();
+                }
+            };
+
+            const prevSentence = () => {
+                if (currentIndex > 0) {
+                    setCurrentIndex(currentIndex - 1);
+                    resetPracticeStates();
+                }
+            };
+
+            const speakEnglish = () => {
+                if ('speechSynthesis' in window && currentSentence) {
+                    window.speechSynthesis.cancel();
+                    const utterance = new SpeechSynthesisUtterance(currentSentence.en);
+                    utterance.lang = 'en-US';
+                    utterance.rate = 0.85; 
+                    window.speechSynthesis.speak(utterance);
+                } else {
+                    alert("Your browser does not support text-to-speech.");
+                }
+            };
+
+            // --- 録音とAI音声認識の統合処理 ---
+            const startBoth = async () => {
+                setAudioUrl(null);
+                setRecognitionText("");
+                setSimilarityScore(null);
+                setIsProcessing(false);
+
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    
+                    const mediaRecorder = new MediaRecorder(stream);
+                    mediaRecorderRef.current = mediaRecorder;
+                    audioChunksRef.current = [];
+
+                    mediaRecorder.ondataavailable = (event) => {
+                        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+                    };
+
+                    mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+                        const url = URL.createObjectURL(audioBlob);
+                        setAudioUrl(url);
+                        stream.getTracks().forEach(track => track.stop());
+                        calculateSimilarityAndRender(); 
+                    };
+
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (SpeechRecognition) {
+                        const recognition = new SpeechRecognition();
+                        recognitionRef.current = recognition;
+                        recognition.lang = 'en-US';
+                        recognition.interimResults = false; 
+                        recognition.maxAlternatives = 1;
+
+                        recognition.onstart = () => {
+                            setIsActive(true);
+                        };
+
+                        recognition.onresult = (event) => {
+                            const transcript = Array.from(event.results).map(result => result[0].transcript).join('');
+                            setRecognitionText(transcript);
+                        };
+
+                        recognition.onspeechend = () => {
+                            recognition.stop();
+                        };
+
+                        recognition.onend = () => {
+                            setIsActive(false);
+                            setIsProcessing(true);
+                            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                                mediaRecorderRef.current.stop();
+                            } else {
+                               calculateSimilarityAndRender(); 
+                            }
+                        };
+
+                        recognition.start();
+                    } else {
+                        alert("Your browser does not support AI speech recognition. Recording only.");
+                        setIsActive(true);
+                        mediaRecorder.start();
+                    }
+
+                    if(SpeechRecognition) {
+                       mediaRecorder.start();
+                    }
+
+                } catch (error) {
+                    console.error("Microphone access error:", error);
+                    alert("Microphone access denied. Please check your browser settings.");
+                }
+            };
+
+            const stopBoth = () => {
+                if (recognitionRef.current && isActive) {
+                    recognitionRef.current.stop(); 
+                } else {
+                    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                        mediaRecorderRef.current.stop();
+                    }
+                    setIsActive(false);
+                }
+            };
+
+            const toggleRecording = () => {
+                if (isActive) {
+                    stopBoth();
+                } else {
+                    startBoth();
+                }
+            };
+
+            // 厳しめの類似度スコア計算
+            const calculateSimilarityAndRender = () => {
+                if (recognitionText && currentSentence) {
+                    const cleanString = (str) => str.toLowerCase().replace(/[.,?!'"\-]/g, '').trim();
+                    const targetClean = cleanString(currentSentence.en);
+                    const inputClean = cleanString(recognitionText);
+                    
+                    if (!inputClean) {
+                        setSimilarityScore(0);
+                        setIsProcessing(false);
+                        return;
+                    }
+                    
+                    if (targetClean === inputClean) {
+                        setSimilarityScore(100);
+                        setIsProcessing(false);
+                        return;
+                    }
+
+                    const targetWords = targetClean.split(/\s+/).filter(w => w.length > 0);
+                    const inputWords = inputClean.split(/\s+/).filter(w => w.length > 0);
+                    
+                    const levenshtein = (a, b) => {
+                        const matrix = [];
+                        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+                        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+                        for (let i = 1; i <= b.length; i++) {
+                            for (let j = 1; j <= a.length; j++) {
+                                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                                    matrix[i][j] = matrix[i - 1][j - 1];
+                                } else {
+                                    matrix[i][j] = Math.min(
+                                        matrix[i - 1][j - 1] + 1,
+                                        matrix[i][j - 1] + 1,
+                                        matrix[i - 1][j] + 1
+                                    );
+                                }
+                            }
+                        }
+                        return matrix[b.length][a.length];
+                    };
+
+                    let matchCount = 0;
+                    let remainingTarget = [...targetWords];
+
+                    inputWords.forEach(word => {
+                        const exactIndex = remainingTarget.findIndex(t => t === word);
+                        if (exactIndex !== -1) {
+                            matchCount += 1;
+                            remainingTarget.splice(exactIndex, 1);
+                        } else {
+                            let bestMatchIndex = -1;
+                            let minDistance = 2; 
+                            
+                            remainingTarget.forEach((tWord, i) => {
+                                if (Math.abs(word.length - tWord.length) >= 2) return;
+                                const dist = levenshtein(word, tWord);
+                                if (dist < minDistance) {
+                                    minDistance = dist;
+                                    bestMatchIndex = i;
+                                }
+                            });
+
+                            if (bestMatchIndex !== -1) {
+                                matchCount += 0.5;
+                                remainingTarget.splice(bestMatchIndex, 1);
+                            }
+                        }
+                    });
+                    
+                    const maxLength = Math.max(targetWords.length, inputWords.length);
+                    const rawScore = (matchCount / maxLength) * 100;
+                    
+                    let finalScore = 10 + (rawScore * 0.9);
+                    if (finalScore >= 100) {
+                        finalScore = 98;
+                    }
+                    
+                    setSimilarityScore(Math.round(finalScore));
+                    setIsProcessing(false);
+                }
+            };
+
+            // カッコが改行されないようにするフォーマット関数
+            const formatBlankText = (text) => {
+                // ( ) にマッチさせて分割
+                const parts = text.split(/(\(\s*\))/g);
+                return parts.map((part, index) => {
+                    if (part.match(/^\(\s*\)$/)) {
+                        // カッコの部分を span.whitespace-nowrap で囲み、中身に十分な空白(&nbsp;)を挿入する
+                        return (
+                            <span key={index} className="whitespace-nowrap text-blue-500 font-bold mx-1">
+                                (&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;)
+                            </span>
+                        );
+                    }
+                    return <span key={index}>{part}</span>;
+                });
+            };
+
+            // 完全に中央揃えにするタイトルコンポーネント
+            const AppTitle = () => (
+                <div className="w-full flex flex-col items-center justify-center py-6 md:py-8 bg-white border-b-4 border-blue-600 shadow-sm text-center">
+                    <div className="bg-blue-600 p-2 md:p-3 rounded-xl text-white shadow-md inline-flex items-center justify-center mb-3">
+                        <IconBookOpen className="w-8 h-8 md:w-10 md:h-10" />
+                    </div>
+                    <h1 className="text-3xl md:text-5xl italic font-bold font-times text-blue-800 drop-shadow-sm mb-1 text-center w-full">
+                        Vision Quest
+                    </h1>
+                    <h2 className="text-lg md:text-2xl text-gray-800 tracking-wider font-mincho font-bold text-center px-4 w-full">
+                        必勝！春の英作文 Target Sentence 60
+                    </h2>
+                </div>
+            );
+
+            // ==========================================
+            // Render: List View
+            // ==========================================
+            if (currentView === 'list') {
+                return (
+                    <div className="min-h-screen bg-gray-50 pb-28 text-gray-800">
+                        <AppTitle />
+                        
+                        <div className="max-w-5xl mx-auto px-4 py-6 flex flex-col sm:flex-row justify-between items-center gap-4">
+                            <p className="text-gray-600 font-bold text-lg font-sans bg-white px-4 py-2 rounded-lg shadow-sm">
+                                Selected: <span className="text-blue-600 text-xl mx-1">{selectedIds.length}</span> / {allSentences.length}
+                            </p>
+                            <div className="flex gap-2 text-sm font-medium font-sans">
+                                <button onClick={handleSelectAll} className="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors shadow-sm font-bold">
+                                    Select All
+                                </button>
+                                <button onClick={handleClearAll} className="px-5 py-2.5 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors shadow-sm font-bold">
+                                    Clear All
+                                </button>
+                            </div>
+                        </div>
+
+                        <main className="max-w-5xl mx-auto px-4 pb-8">
+                            <div className="grid gap-4">
+                                {allSentences.map(sentence => {
+                                    const isSelected = selectedIds.includes(sentence.id);
+                                    return (
+                                        <label 
+                                            key={sentence.id} 
+                                            className={`flex items-start p-6 rounded-2xl border-2 cursor-pointer transition-all ${
+                                                isSelected ? 'border-blue-500 bg-blue-50 shadow-md transform scale-[1.01]' : 'border-gray-200 bg-white hover:border-blue-300 shadow-sm'
+                                            }`}
+                                            onClick={(e) => handleToggleSelect(sentence.id, e)}
+                                        >
+                                            <div className="flex-shrink-0 mt-2 mr-6">
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="w-6 h-6 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                                                    checked={isSelected}
+                                                    readOnly
+                                                />
+                                            </div>
+                                            <div className="flex-1 w-full">
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+                                                    <span className="text-sm font-bold text-white bg-blue-600 px-3 py-1 rounded-full font-sans shadow-sm w-max">
+                                                        No.{sentence.id}
+                                                    </span>
+                                                    <span className="text-sm font-bold text-teal-700 bg-teal-100 px-3 py-1 rounded-full font-mincho shadow-sm w-max">
+                                                        {sentence.category}
+                                                    </span>
+                                                </div>
+                                                <p className="font-bold text-gray-900 leading-relaxed font-mincho text-xl md:text-2xl mt-2">
+                                                    {sentence.jp}
+                                                </p>
+                                                <p className={`font-times text-xl md:text-2xl mt-3 tracking-wide prevent-orphan ${isSelected ? 'text-blue-800 font-bold' : 'text-gray-500'}`}>
+                                                    {formatBlankText(sentence.enBlank)}
+                                                </p>
+                                            </div>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </main>
+
+                        <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 md:p-6 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.1)] z-20">
+                            <div className="max-w-5xl mx-auto flex justify-center">
+                                <button 
+                                    onClick={startPractice} 
+                                    disabled={selectedIds.length === 0}
+                                    className="w-full sm:w-auto px-12 py-4 bg-blue-600 text-white rounded-full font-bold text-xl md:text-2xl shadow-xl hover:bg-blue-700 hover:scale-[1.03] transition-all disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed flex justify-center items-center gap-3 font-sans"
+                                >
+                                    Start Practice ({selectedIds.length})
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            // ==========================================
+            // Render: Practice View
+            // ==========================================
+            if (!currentSentence) return null;
+
+            return (
+                <div className="min-h-screen bg-gray-50 flex flex-col items-center pb-20 font-sans text-gray-800">
+                    
+                    {/* 練習画面ではヘッダーをシンプルにし、戻るボタンを上部に配置 */}
+                    <div className="w-full bg-white shadow-sm border-b border-gray-200 py-4 px-4 flex justify-between items-center">
+                        <button 
+                            onClick={goBackToList}
+                            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 bg-gray-100 border border-gray-300 hover:bg-gray-200 shadow-sm rounded-lg transition-colors font-bold text-sm md:text-base"
+                        >
+                            <IconArrowLeft className="w-5 h-5" />
+                            <span>Back to List</span>
+                        </button>
+                        <div className="font-bold text-blue-800 font-times text-xl italic hidden sm:block">
+                            Vision Quest
+                        </div>
+                        <div className="w-[120px]"></div> {/* スペース調整用 */}
+                    </div>
+
+                    {/* Main Practice Card */}
+                    <main className="w-full max-w-4xl mt-8 bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 mx-4">
+                        
+                        {/* Header / Nav */}
+                        <div className="bg-gray-100 px-6 md:px-10 py-5 flex justify-between items-center border-b border-gray-200">
+                            <div className="flex flex-col gap-2">
+                               <div className="flex items-center gap-3">
+                                 <span className="text-sm font-bold text-white bg-blue-600 px-3 py-1 rounded-full shadow-sm">
+                                    No.{currentSentence.id}
+                                  </span>
+                                 <span className="font-bold text-gray-600 text-lg md:text-xl font-times tracking-wide bg-white px-4 py-1 rounded-lg border border-gray-300 shadow-sm">
+                                    Q. {currentIndex + 1} / {activeSentences.length}
+                                 </span>
+                               </div>
+                               <span className="text-sm font-bold text-teal-700 bg-teal-100 px-3 py-1 rounded-full font-mincho shadow-sm self-start">
+                                 {currentSentence.category}
+                               </span>
+                            </div>
+                            <div className="flex gap-3">
+                                <button 
+                                    onClick={prevSentence} disabled={currentIndex === 0}
+                                    className="p-3 bg-white border border-gray-300 rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-white shadow-md transition-colors"
+                                >
+                                    <IconChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
+                                </button>
+                                <button 
+                                    onClick={nextSentence} disabled={currentIndex === activeSentences.length - 1}
+                                    className="p-3 bg-white border border-gray-300 rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-white shadow-md transition-colors"
+                                >
+                                    <IconChevronRight className="w-6 h-6 md:w-8 md:h-8" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Sentences Display */}
+                        <div className="p-8 md:p-14 flex flex-col items-center text-center space-y-10">
+                            
+                            <div className="space-y-4 w-full">
+                                <p className="text-sm md:text-base font-bold text-blue-600 tracking-widest">JAPANESE</p>
+                                {/* 日本語: サイズを調整して2行に収まりやすく */}
+                                <h2 className="text-2xl md:text-4xl font-bold text-gray-900 leading-snug font-mincho">
+                                    {currentSentence.jp}
+                                </h2>
+                            </div>
+
+                            <div className="w-full h-px bg-gray-200 my-2"></div>
+
+                            <div className="space-y-8 w-full flex flex-col items-center">
+                                
+                                {/* Display Mode Toggles */}
+                                <div className="flex bg-gray-100 p-2 rounded-full w-full max-w-lg justify-between shadow-inner">
+                                    <button 
+                                        onClick={() => setDisplayMode('none')}
+                                        className={`toggle-btn ${displayMode === 'none' ? 'toggle-btn-active-white' : 'toggle-btn-inactive'}`}
+                                    >
+                                        <IconEyeOff className="w-5 h-5" /> Hide
+                                    </button>
+                                    <button 
+                                        onClick={() => setDisplayMode('blank')}
+                                        className={`toggle-btn ${displayMode === 'blank' ? 'toggle-btn-active-blue' : 'toggle-btn-inactive'}`}
+                                    >
+                                        <IconFileText className="w-5 h-5" /> Fill-in
+                                    </button>
+                                    <button 
+                                        onClick={() => setDisplayMode('full')}
+                                        className={`toggle-btn ${displayMode === 'full' ? 'toggle-btn-active-green' : 'toggle-btn-inactive'}`}
+                                    >
+                                        <IconEye className="w-5 h-5" /> Full Text
+                                    </button>
+                                </div>
+                                
+                                <button 
+                                    onClick={speakEnglish}
+                                    className="flex items-center gap-3 px-8 py-4 rounded-full bg-blue-50 border-2 border-blue-200 text-blue-800 hover:bg-blue-100 shadow-sm transition-all font-bold text-lg md:text-xl hover:scale-105"
+                                >
+                                    <IconVolume2 className="w-6 h-6 md:w-8 md:h-8" />
+                                    <span>Play Audio</span>
+                                </button>
+
+                                {/* 英文表示エリア: サイズを調整、カッコの改行防止 */}
+                                <div className="min-h-[6rem] md:min-h-[8rem] flex items-center justify-center w-full mt-2">
+                                    {displayMode === 'none' && (
+                                        <p className="text-gray-300 text-xl md:text-2xl font-bold tracking-wide">(Text is hidden)</p>
+                                    )}
+                                    {displayMode === 'blank' && (
+                                        <p className="text-2xl md:text-4xl font-bold text-blue-900 animate-fade-in tracking-wider leading-relaxed font-times prevent-orphan">
+                                            {formatBlankText(currentSentence.enBlank)}
+                                        </p>
+                                    )}
+                                    {displayMode === 'full' && (
+                                        <p className="text-2xl md:text-4xl font-bold text-green-800 animate-fade-in tracking-wider leading-relaxed font-times">
+                                            {currentSentence.en}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Record & Evaluate Area */}
+                        <div className="bg-slate-50 p-8 md:p-14 border-t border-gray-200 flex justify-center">
+                            <div className="bg-white p-8 md:p-12 rounded-3xl shadow-lg border border-gray-200 flex flex-col items-center space-y-8 w-full max-w-3xl">
+                                
+                                <div className="text-center mb-2">
+                                    <h3 className="font-bold text-gray-800 text-2xl md:text-3xl flex items-center justify-center gap-3 mb-3">
+                                        <IconMic className="text-blue-600 w-8 h-8 md:w-10 md:h-10" />
+                                        Pronunciation Check
+                                    </h3>
+                                    <p className="text-gray-500 text-sm md:text-base">Tap to start speaking. Tap again to stop.</p>
+                                </div>
+                                
+                                <button
+                                    onClick={toggleRecording}
+                                    className={`w-28 h-28 md:w-36 md:h-36 rounded-full flex items-center justify-center text-white shadow-2xl transition-all ${
+                                        isActive ? 'bg-red-500 animate-pulse scale-105' : 'bg-red-600 hover:bg-red-700 hover:scale-110'
+                                    }`}
+                                >
+                                    {isActive ? <IconSquare className="w-12 h-12" /> : <IconMic className="w-16 h-16" />}
+                                </button>
+                                
+                                <p className="text-lg md:text-xl font-bold text-red-500 h-8">
+                                    {isActive ? 'Recording & Listening...' : ''}
+                                    {isProcessing && !isActive ? 'Calculating Score...' : ''}
+                                </p>
+
+                                {/* Results Area */}
+                                {(audioUrl || recognitionText) && (
+                                    <div className="w-full mt-6 flex flex-col items-center space-y-8 animate-fade-in border-t border-gray-200 pt-8">
+                                        
+                                        {/* AIスコアとテキスト */}
+                                        {recognitionText && (
+                                            <div className="w-full text-center space-y-6">
+                                                <div className="bg-blue-50 p-6 md:p-8 rounded-2xl text-xl md:text-3xl text-gray-800 border border-blue-200 font-times tracking-wide shadow-inner">
+                                                    "{recognitionText}"
+                                                </div>
+                                                
+                                                {similarityScore !== null && (
+                                                    <div className={`text-3xl md:text-5xl font-bold flex flex-col items-center justify-center gap-4 ${
+                                                        similarityScore === 100 ? 'text-green-600' : 
+                                                        similarityScore >= 80 ? 'text-blue-600' : 
+                                                        similarityScore >= 60 ? 'text-orange-500' : 'text-red-500'
+                                                    }`}>
+                                                        <div className="flex items-center gap-3">
+                                                            {similarityScore >= 80 && <IconCheckCircle className="w-12 h-12 md:w-16 md:h-16" />}
+                                                            <span>Score: {similarityScore} / 100</span>
+                                                        </div>
+                                                        <span className="text-xl md:text-3xl font-bold mt-2 tracking-wider">
+                                                            {similarityScore === 100 && "Perfect!! 🎉"}
+                                                            {similarityScore >= 80 && similarityScore < 100 && "Excellent! 👍"}
+                                                            {similarityScore >= 60 && similarityScore < 80 && "Good job! 🙂"}
+                                                            {similarityScore < 60 && "Keep trying! 💪"}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Audio Playback */}
+                                        {audioUrl && (
+                                            <div className="w-full flex flex-col items-center gap-3 bg-gray-100 p-5 rounded-2xl border border-gray-200 mt-4">
+                                                <span className="text-base md:text-lg font-bold text-gray-600 flex items-center gap-2">
+                                                    <IconVolume2 className="w-5 h-5" /> Listen to your voice
+                                                </span>
+                                                <audio src={audioUrl} controls className="w-full max-w-md h-12 shadow-sm rounded-full" />
+                                            </div>
+                                        )}
+
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('app'));
+    </script>
+</body>
+</html>
